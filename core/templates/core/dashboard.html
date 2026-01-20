@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard | FinSight</title>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body class="bg-light">
+<div class="container py-4">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="mb-0">Dashboard</h1>
+            <p class="text-muted mb-0">Welcome, {{ request.user.username }} 👋</p>
+        </div>
+        <div>
+            <a href="{% url 'add_expense' %}" class="btn btn-primary btn-sm">➕ Add Expense</a>
+            <a href="{% url 'set_budget' %}" class="btn btn-outline-secondary btn-sm">📊 Set Budget</a>
+            <a href="{% url 'export_csv' %}" class="btn btn-outline-success btn-sm">⬇ Export CSV</a>
+            <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm">Logout</a>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title mb-3">📈 Spending Analytics</h5>
+
+            <div class="row">
+                <div class="col-md-8">
+                    <canvas id="monthlyChart" height="120"></canvas>
+                </div>
+                <div class="col-md-4">
+                    <canvas id="categoryChart" height="180"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Smart Insights -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">🧠 Smart Insights</h5>
+
+            {% if insights %}
+                {% for insight in insights %}
+                    <div class="alert alert-info mb-2">
+                        {{ insight }}
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="alert alert-secondary">
+                    No insights available yet.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Budget Status -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">📊 Monthly Budget Status</h5>
+
+            {% if budget_data %}
+            <table class="table table-bordered table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Category</th>
+                        <th>Limit</th>
+                        <th>Spent</th>
+                        <th>Used %</th>
+                        <th>Status</th>
+                        <th class="text-center">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in budget_data %}
+                    <tr>
+                        <td>{{ b.category }}</td>
+                        <td>{{ b.limit }}</td>
+                        <td>{{ b.spent }}</td>
+                        <td>{{ b.percent_used }}%</td>
+                        <td>
+                            {% if b.exceeded %}
+                                <span class="badge bg-danger">Over Budget</span>
+                            {% elif b.percent_used >= 80 %}
+                                <span class="badge bg-warning text-dark">Near Limit</span>
+                            {% else %}
+                                <span class="badge bg-success">Safe</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <form method="post" action="{% url 'delete_budget' b.id %}">
+                                {% csrf_token %}
+                                <button class="btn btn-sm btn-outline-danger" title="Delete Budget">
+                                    🗑
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+                <p class="text-muted">No budgets set yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Month Selector -->
+    <form method="get" class="row g-2 align-items-end mb-4">
+        <div class="col-md-4">
+            <label class="form-label">Select Month</label>
+            <select name="month" class="form-select">
+                {% for m in available_months %}
+                    <option value="{{ m.month.month }}"
+                        {% if m.month.month == selected_month %}selected{% endif %}>
+                        {{ m.month|date:"F Y" }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">&nbsp;</label>
+            <button class="btn btn-primary w-100">Apply</button>
+        </div>
+    </form>
+
+    <!-- Expenses -->
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">
+                💰 Expenses — {{ selected_month_name }} {{ selected_year }}
+            </h5>
+
+            {% if expenses %}
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Category</th>
+                        <th>Amount</th>
+                        <th>Description</th>
+                        <th class="text-center">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for expense in expenses %}
+                    <tr>
+                        <td>{{ expense.date }}</td>
+                        <td>{{ expense.category.name }}</td>
+                        <td>₹{{ expense.amount }}</td>
+                        <td>{{ expense.description }}</td>
+                        <td class="text-center">
+                            <form method="post" action="{% url 'delete_expense' expense.id %}">
+                                {% csrf_token %}
+                                <button class="btn btn-sm btn-outline-danger" title="Delete Expense">
+                                    🗑
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+                <div class="alert alert-secondary">
+                    No expenses found for {{ selected_month_name }} {{ selected_year }}.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+
+<!-- Charts -->
+<script>
+    new Chart(document.getElementById('monthlyChart'), {
+        type: 'line',
+        data: {
+            labels: {{ months|safe }},
+            datasets: [{
+                label: 'Monthly Spending',
+                data: {{ totals|safe }},
+                borderWidth: 2,
+                fill: false
+            }]
+        }
+    });
+
+    new Chart(document.getElementById('categoryChart'), {
+        type: 'pie',
+        data: {
+            labels: {{ cat_labels|safe }},
+            datasets: [{
+                data: {{ cat_totals|safe }}
+            }]
+        },
+        options: {
+            plugins: { legend: { position: 'bottom' } }
+        }
+    });
+</script>
+
+</body>
+</html>

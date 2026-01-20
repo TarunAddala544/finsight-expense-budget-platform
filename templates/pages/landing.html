@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}FinSight | Smart Finance{% endblock %}
+
+{% block content %}
+<div class="row align-items-center">
+    <div class="col-md-6">
+        <h1 class="fw-bold display-5">
+            Control Your Money.<br>
+            Build Better Habits.
+        </h1>
+
+        <p class="text-muted mt-3 fs-5">
+            FinSight helps you track expenses, manage budgets,
+            and gain actionable insights into your spending.
+        </p>
+
+        <a href="/accounts/register/" class="btn btn-primary btn-lg mt-3">
+            Start Free
+        </a>
+    </div>
+
+    <div class="col-md-6 text-center">
+        <img src="https://cdn-icons-png.flaticon.com/512/4305/4305432.png"
+             class="img-fluid" style="max-height: 320px;">
+    </div>
+</div>
+{% endblock %}

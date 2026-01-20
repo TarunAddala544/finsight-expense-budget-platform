@@ -1,0 +1,9 @@
+<h2>Monthly Spending Summary</h2>
+
+<ul>
+    {% for row in data %}
+        <li>{{ row.month|date:"F Y" }} — ₹{{ row.total }}</li>
+    {% endfor %}
+</ul>
+
+<a href="{% url 'dashboard' %}">Back</a>
